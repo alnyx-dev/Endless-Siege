@@ -6,9 +6,17 @@ namespace Game.Player
     public class PlayerWeapon : MonoBehaviour
     {
         [SerializeField] private WeaponConfig config;
+        [SerializeField] private Bullet bulletPrefab;
         [SerializeField] private LayerMask enemyLayer;
+        [SerializeField] private Transform muzzlePoint;
 
         private float _fireTimer;
+        private ObjectPool<Bullet> _bulletPool;
+
+        private void Awake()
+        {
+            _bulletPool = new ObjectPool<Bullet>(bulletPrefab, transform);
+        }
 
         private void Update()
         {
@@ -18,9 +26,17 @@ namespace Game.Player
             IDamageable nearest = FindNearestEnemy();
             if (nearest != null)
             {
-                nearest.TakeDamage(config.damage);
+                Fire(nearest);
                 _fireTimer = config.fireRate;
             }
+        }
+
+        private void Fire(IDamageable target)
+        {
+            Vector3 spawnPos = muzzlePoint != null ? muzzlePoint.position : transform.position;
+            Bullet bullet = _bulletPool.Get(spawnPos, Quaternion.identity);
+            bullet.Init(((MonoBehaviour)target).transform, target, config.damage, config.bulletSpeed);
+            bullet.transform.SetParent(null);
         }
 
         private IDamageable FindNearestEnemy()
