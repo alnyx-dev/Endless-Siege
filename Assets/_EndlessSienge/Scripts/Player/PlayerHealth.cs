@@ -14,10 +14,12 @@ namespace Game.Player
         public bool IsAlive => _currentHealth > 0f;
 
         private float _currentHealth;
+        private bool _deathFired;
 
         private void Awake()
         {
             _currentHealth = maxHealth;
+            _deathFired = false;
         }
 
         private void Start()
@@ -32,8 +34,11 @@ namespace Game.Player
             _currentHealth = Mathf.Max(0f, _currentHealth - amount);
             OnHealthChanged?.Invoke(_currentHealth, maxHealth);
 
-            if (_currentHealth <= 0f)
+            if (_currentHealth <= 0f && !_deathFired)
+            {
+                _deathFired = true;
                 OnDeath?.Invoke();
+            }
         }
     }
 }

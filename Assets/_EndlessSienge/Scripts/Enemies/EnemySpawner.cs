@@ -32,7 +32,7 @@ namespace Game.Enemies
 
         private void Update()
         {
-            while (_activeEnemies.Count < minEnemiesOnField)
+            if (_activeEnemies.Count < minEnemiesOnField)
                 SpawnEnemy();
         }
 
@@ -46,30 +46,56 @@ namespace Game.Enemies
             Enemy enemy = _pool.Get(spawnPosition, Quaternion.identity);
             enemy.Init(config, playerTransform, _playerDamageable);
             enemy.OnDeath += HandleEnemyDeath;
+            enemy.OnDespawned += HandleEnemyDespawned;
 
             _activeEnemies.Add(enemy);
         }
 
-        private void HandleEnemyDeath(Enemy enemy)
+        private void HandleEnemyDeath(Enemy enemy) => ReleaseEnemy(enemy);
+
+        private void HandleEnemyDespawned(Enemy enemy) => ReleaseEnemy(enemy);
+
+        private void ReleaseEnemy(Enemy enemy)
         {
             enemy.OnDeath -= HandleEnemyDeath;
+            enemy.OnDespawned -= HandleEnemyDespawned;
             _activeEnemies.Remove(enemy);
             _pool.Release(enemy);
         }
 
         private Vector3 GetSpawnPosition()
         {
-            Vector2 randomDir = Random.insideUnitCircle.normalized;
-            float distance = Random.Range(minSpawnRadius, maxSpawnRadius);
-            Vector3 offset = new Vector3(randomDir.x, 0f, randomDir.y) * distance;
+            Camera cam = Camera.main;
+            Vector3 center = playerTransform != null ? playerTransform.position : Vector3.zero;
 
-            return (playerTransform != null ? playerTransform.position : Vector3.zero) + offset;
+            for (int attempt = 0; attempt < 10; attempt++)
+            {
+                Vector2 randomDir = Random.insideUnitCircle.normalized;
+                float distance = Random.Range(minSpawnRadius, maxSpawnRadius);
+                Vector3 pos = center + new Vector3(randomDir.x, 0f, randomDir.y) * distance;
+
+                if (cam == null || IsOffScreen(cam, pos))
+                    return pos;
+            }
+
+            Vector2 fallbackDir = Random.insideUnitCircle.normalized;
+            return center + new Vector3(fallbackDir.x, 0f, fallbackDir.y) * maxSpawnRadius;
+        }
+
+        private static bool IsOffScreen(Camera cam, Vector3 worldPos)
+        {
+            Vector3 vp = cam.WorldToViewportPoint(worldPos);
+            return vp.x < 0f || vp.x > 1f || vp.y < 0f || vp.y > 1f;
         }
 
         private void OnDestroy()
         {
-            foreach (Enemy enemy in _activeEnemies)
+            var snapshot = new List<Enemy>(_activeEnemies);
+            foreach (Enemy enemy in snapshot)
+            {
                 enemy.OnDeath -= HandleEnemyDeath;
+                enemy.OnDespawned -= HandleEnemyDespawned;
+            }
         }
     }
 }

@@ -16,8 +16,15 @@ namespace Game.Player
         [Range(0.5f, 15f)] [SerializeField] private float aimToleranceDegrees = 5f;
 
         private float _fireTimer;
+        private readonly Collider[] _hitBuffer = new Collider[32];
+        private ObjectPool<Bullet> _pool;
 
         public IDamageable CurrentTarget { get; private set; }
+
+        private void Awake()
+        {
+            _pool = new ObjectPool<Bullet>(bulletPrefab, transform, 4);
+        }
 
         private void Update()
         {
@@ -31,42 +38,45 @@ namespace Game.Player
             _fireTimer = config.fireRate;
         }
 
-        // where the gun visually points: body forward
         private Vector3 AimDirection => transform.forward;
 
-        // ponytail: angle-only gate — enemy colliders are small ground-level triggers a barrel-height ray overflies;
-        // bring back a Physics.Raycast gate if enemy colliders ever cover their bodies
         private bool IsAimedAt(IDamageable target)
         {
+            if (target is not MonoBehaviour mb) return false;
+
             Vector3 origin = muzzlePoint != null ? muzzlePoint.position : transform.position;
             Vector3 flatDir = Vector3.ProjectOnPlane(AimDirection, Vector3.up).normalized;
 
             Vector3 flatToTarget = Vector3.ProjectOnPlane(
-                ((MonoBehaviour)target).transform.position - origin, Vector3.up);
+                mb.transform.position - origin, Vector3.up);
 
             return Vector3.Angle(flatDir, flatToTarget) <= aimToleranceDegrees;
         }
 
         private void Fire(IDamageable target)
         {
+            if (target is not MonoBehaviour mb) return;
+
             Vector3 spawnPos = muzzlePoint != null ? muzzlePoint.position : transform.position;
-            Bullet bullet = Instantiate(bulletPrefab, spawnPos, Quaternion.LookRotation(AimDirection));
-            bullet.Init(((MonoBehaviour)target).transform, target, config.damage, config.bulletSpeed);
+            Bullet bullet = _pool.Get(spawnPos, Quaternion.LookRotation(AimDirection));
+            bullet.Init(mb.transform, target, config.damage, config.bulletSpeed, _pool);
         }
 
         private IDamageable FindNearestEnemy()
         {
             int mask = enemyLayer == 0 ? ~0 : enemyLayer;
-            Collider[] hits = Physics.OverlapSphere(transform.position, config.range, mask, QueryTriggerInteraction.Collide);
+            int count = Physics.OverlapSphereNonAlloc(
+                transform.position, config.range, _hitBuffer, mask, QueryTriggerInteraction.Collide);
+
             IDamageable closest = null;
             float closestDist = float.MaxValue;
 
-            foreach (var hit in hits)
+            for (int i = 0; i < count; i++)
             {
-                var damageable = hit.GetComponent<IDamageable>();
+                var damageable = _hitBuffer[i].GetComponent<IDamageable>();
                 if (damageable == null || !damageable.IsAlive) continue;
 
-                float dist = (hit.transform.position - transform.position).sqrMagnitude;
+                float dist = (_hitBuffer[i].transform.position - transform.position).sqrMagnitude;
                 if (dist < closestDist)
                 {
                     closestDist = dist;

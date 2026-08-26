@@ -3,26 +3,37 @@ using Game.Core;
 
 namespace Game.Player
 {
-    public class Bullet : MonoBehaviour
+    public class Bullet : MonoBehaviour, IPoolable
     {
         private Transform _target;
         private IDamageable _targetDamageable;
+        private ObjectPool<Bullet> _pool;
         private float _damage;
         private float _speed;
 
-        public void Init(Transform target, IDamageable targetDamageable, float damage, float speed)
+        public void Init(Transform target, IDamageable targetDamageable, float damage, float speed,
+            ObjectPool<Bullet> pool)
         {
             _target = target;
             _targetDamageable = targetDamageable;
             _damage = damage;
             _speed = speed;
+            _pool = pool;
+        }
+
+        public void OnSpawn() { }
+
+        public void OnDespawn()
+        {
+            _target = null;
+            _targetDamageable = null;
         }
 
         private void Update()
         {
             if (_target == null || !_targetDamageable.IsAlive)
             {
-                Destroy(gameObject);
+                Release();
                 return;
             }
 
@@ -32,12 +43,20 @@ namespace Game.Player
             if (direction.magnitude <= distanceThisFrame)
             {
                 _targetDamageable.TakeDamage(_damage);
-                Destroy(gameObject);
+                Release();
                 return;
             }
 
             transform.position += direction.normalized * distanceThisFrame;
             transform.LookAt(_target);
+        }
+
+        private void Release()
+        {
+            if (_pool != null)
+                _pool.Release(this);
+            else
+                Destroy(gameObject);
         }
     }
 }

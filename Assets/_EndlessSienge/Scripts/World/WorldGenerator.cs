@@ -5,27 +5,19 @@ namespace Game.World
 {
     public class WorldGenerator : MonoBehaviour
     {
-        private enum PropKind { Tree, Rock, Bush }
-
         [Header("Seed")]
         [Tooltip("Fixed seed for reproducible worlds. Negative = new random seed every run")]
         [SerializeField] private int seed = -1;
 
         [Header("Area")]
-        [Min(5f)]
-        [SerializeField] private float areaHalfSize = 45f;
-        [Min(0f)]
-        [SerializeField] private float clearRadius = 8f;
-        [Min(0.5f)]
-        [SerializeField] private float minSpacing = 2.5f;
+        [Min(5f)]  [SerializeField] private float areaHalfSize = 45f;
+        [Min(0f)]  [SerializeField] private float clearRadius = 8f;
+        [Min(0.5f)] [SerializeField] private float minSpacing = 2.5f;
 
         [Header("Density")]
-        [Min(0)]
-        [SerializeField] private int treeCount = 90;
-        [Min(0)]
-        [SerializeField] private int rockCount = 50;
-        [Min(0)]
-        [SerializeField] private int bushCount = 70;
+        [Min(0)] [SerializeField] private int treeCount = 90;
+        [Min(0)] [SerializeField] private int rockCount = 50;
+        [Min(0)] [SerializeField] private int bushCount = 70;
 
         [Header("Scale Variation")]
         [SerializeField] private float minScale = 0.85f;
@@ -54,13 +46,12 @@ namespace Game.World
             _worldRoot.SetParent(transform);
 
             var placed = new List<Vector2>();
-            SpawnGroup(trees, treeCount, placed, PropKind.Tree);
-            SpawnGroup(rocks, rockCount, placed, PropKind.Rock);
-            SpawnGroup(bushes, bushCount, placed, PropKind.Bush);
+            SpawnGroup(trees, treeCount, placed);
+            SpawnGroup(rocks, rockCount, placed);
+            SpawnGroup(bushes, bushCount, placed);
         }
 
-        // ponytail: O(n^2) spacing check, fine for a few hundred props; swap to a grid if counts grow 10x
-        private void SpawnGroup(GameObject[] prefabs, int count, List<Vector2> placed, PropKind kind)
+        private void SpawnGroup(GameObject[] prefabs, int count, List<Vector2> placed)
         {
             if (prefabs == null || prefabs.Length == 0) return;
 
@@ -91,61 +82,11 @@ namespace Game.World
                     placed.Add(p);
 
                     GameObject prefab = prefabs[_rng.Next(prefabs.Length)];
-                    GameObject obj = Instantiate(prefab,
+                    Instantiate(prefab,
                         new Vector3(p.x, 0f, p.y),
                         Quaternion.Euler(0f, (float)_rng.NextDouble() * 360f, 0f),
-                        _worldRoot);
-                    obj.transform.localScale = Vector3.one * Mathf.Lerp(minScale, maxScale, (float)_rng.NextDouble());
-                    AddPropComponents(obj, kind);
-                    break;
-                }
-            }
-        }
-
-        private void AddPropComponents(GameObject obj, PropKind kind)
-        {
-            // pack prefabs ship their own colliders; strip them so each prop ends up with exactly one
-            foreach (Collider extra in obj.GetComponentsInChildren<Collider>(true))
-            {
-                if (Application.isPlaying)
-                    Destroy(extra);
-                else
-                    DestroyImmediate(extra);
-            }
-
-            Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0) return;
-
-            Bounds bounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
-                bounds.Encapsulate(renderers[i].bounds);
-
-            Vector3 localCenter = obj.transform.InverseTransformPoint(bounds.center);
-            float maxExtent = Mathf.Max(bounds.extents.x, bounds.extents.z);
-
-            switch (kind)
-            {
-                case PropKind.Tree:
-                {
-                    CapsuleCollider trunk = obj.AddComponent<CapsuleCollider>();
-                    trunk.center = localCenter;
-                    trunk.radius = Mathf.Max(0.3f, maxExtent * 0.25f); // trunk width, not canopy
-                    trunk.height = Mathf.Max(bounds.size.y, trunk.radius * 2f);
-                    break;
-                }
-                case PropKind.Rock:
-                {
-                    SphereCollider rock = obj.AddComponent<SphereCollider>();
-                    rock.center = localCenter;
-                    rock.radius = maxExtent * 0.8f;
-                    break;
-                }
-                case PropKind.Bush:
-                {
-                    SphereCollider bush = obj.AddComponent<SphereCollider>();
-                    bush.center = localCenter;
-                    bush.radius = maxExtent * 0.7f;
-                    bush.isTrigger = true;
+                        _worldRoot).transform.localScale =
+                        Vector3.one * Mathf.Lerp(minScale, maxScale, (float)_rng.NextDouble());
                     break;
                 }
             }

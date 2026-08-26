@@ -9,6 +9,7 @@ namespace Game.Enemies
     {
         public event Action<float, float> OnHealthChanged;
         public event Action<Enemy> OnDeath;
+        public event Action<Enemy> OnDespawned;
 
         public bool IsAlive => _currentHealth > 0f;
 
@@ -41,16 +42,25 @@ namespace Game.Enemies
             _rb.useGravity = false;
             _rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
 
-            // solid body collider for obstacle physics; the existing trigger stays for weapon targeting
-            CapsuleCollider body = gameObject.AddComponent<CapsuleCollider>();
-            body.radius = 0.35f;
-            body.height = 1.0f;
-            body.center = new Vector3(0f, 0.5f, 0f);
+            if (GetComponent<CapsuleCollider>() == null)
+            {
+                CapsuleCollider body = gameObject.AddComponent<CapsuleCollider>();
+                body.radius = 0.35f;
+                body.height = 1.0f;
+                body.center = new Vector3(0f, 0.5f, 0f);
+            }
         }
 
         private void Update()
         {
             if (!IsAlive || _target == null) return;
+
+            float distSqr = (_target.position - transform.position).sqrMagnitude;
+            if (distSqr > _config.despawnDistance * _config.despawnDistance)
+            {
+                OnDespawned?.Invoke(this);
+                return;
+            }
 
             MoveTowardsTarget();
             TryAttackTarget();
