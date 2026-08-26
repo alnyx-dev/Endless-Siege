@@ -6,17 +6,20 @@ namespace Game.Player
 {
     public class PlayerMovement : MonoBehaviour
     {
+        [Header("Movement")]
         [SerializeField] private JoystickPackAdapter movementInputSource;
-
         [Min(0f)] [SerializeField] private float moveSpeed = 5f;
+        [SerializeField] private float animSmoothTime = 0.1f;
+
+        [Header("Combat Facing")]
         [SerializeField] private bool rotateTowardsEnemy = true;
         [SerializeField] private float rotationSmoothTime = 0.15f;
-        [SerializeField] private LayerMask enemyLayer;
-        [SerializeField] private float detectionRadius = 20f;
-        [SerializeField] private float animSmoothTime = 0.1f;
+        [Tooltip("Point the body turns around; usually the muzzle. Empty = player center")]
+        [SerializeField] private Transform aimOrigin;
 
         private IMovementInput _movementInput;
         private Animator _animator;
+        private PlayerWeapon _weapon;
 
         private static readonly int MoveXParam = Animator.StringToHash("MoveX");
         private static readonly int MoveZParam = Animator.StringToHash("MoveZ");
@@ -30,6 +33,7 @@ namespace Game.Player
         {
             _movementInput = movementInputSource;
             _animator = GetComponentInChildren<Animator>();
+            _weapon = GetComponent<PlayerWeapon>();
         }
 
         private void Update()
@@ -37,6 +41,9 @@ namespace Game.Player
             if (_movementInput == null) return;
 
             Vector2 input = _movementInput.GetInput();
+
+            if (rotateTowardsEnemy)
+                RotateTowardsNearestEnemy();
 
             if (_animator != null)
             {
@@ -58,34 +65,15 @@ namespace Game.Player
 
             Vector3 direction = new Vector3(input.x, 0f, input.y);
             transform.position += direction * (moveSpeed * Time.deltaTime);
-
-            if (rotateTowardsEnemy)
-                RotateTowardsNearestEnemy();
         }
 
         private void RotateTowardsNearestEnemy()
         {
-            int mask = enemyLayer == 0 ? ~0 : enemyLayer;
-            Collider[] hits = Physics.OverlapSphere(transform.position, detectionRadius, mask);
+            IDamageable target = _weapon != null ? _weapon.CurrentTarget : null;
+            if (target == null) return;
 
-            Transform nearest = null;
-            float closestDist = float.MaxValue;
-
-            foreach (var hit in hits)
-            {
-                if (!hit.gameObject.activeInHierarchy) continue;
-
-                float dist = (hit.transform.position - transform.position).sqrMagnitude;
-                if (dist < closestDist)
-                {
-                    closestDist = dist;
-                    nearest = hit.transform;
-                }
-            }
-
-            if (nearest == null) return;
-
-            Vector3 toEnemy = nearest.position - transform.position;
+            Vector3 origin = aimOrigin != null ? aimOrigin.position : transform.position;
+            Vector3 toEnemy = ((MonoBehaviour)target).transform.position - origin;
             toEnemy.y = 0f;
 
             if (toEnemy.sqrMagnitude < 0.0001f) return;
