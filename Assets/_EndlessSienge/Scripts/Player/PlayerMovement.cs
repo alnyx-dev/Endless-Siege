@@ -20,6 +20,7 @@ namespace Game.Player
         private IMovementInput _movementInput;
         private Animator _animator;
         private PlayerWeapon _weapon;
+        private Rigidbody _rb;
 
         private static readonly int MoveXParam = Animator.StringToHash("MoveX");
         private static readonly int MoveZParam = Animator.StringToHash("MoveZ");
@@ -34,6 +35,20 @@ namespace Game.Player
             _movementInput = movementInputSource;
             _animator = GetComponentInChildren<Animator>();
             _weapon = GetComponent<PlayerWeapon>();
+
+            _rb = GetComponent<Rigidbody>();
+            if (_rb == null) _rb = gameObject.AddComponent<Rigidbody>();
+            _rb.useGravity = false;
+            _rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+            _rb.interpolation = RigidbodyInterpolation.Interpolate;
+
+            if (GetComponent<Collider>() == null)
+            {
+                CapsuleCollider body = gameObject.AddComponent<CapsuleCollider>();
+                body.radius = 0.35f;
+                body.height = 1.2f;
+                body.center = new Vector3(0f, 0.6f, 0f);
+            }
         }
 
         private void Update()
@@ -61,10 +76,8 @@ namespace Game.Player
                 _animator.SetFloat(MoveZParam, _currentZ);
             }
 
-            if (input.sqrMagnitude < 0.0001f) return;
-
             Vector3 direction = new Vector3(input.x, 0f, input.y);
-            transform.position += direction * (moveSpeed * Time.deltaTime);
+            _rb.linearVelocity = direction.sqrMagnitude > 0.0001f ? direction * moveSpeed : Vector3.zero;
         }
 
         private void RotateTowardsNearestEnemy()

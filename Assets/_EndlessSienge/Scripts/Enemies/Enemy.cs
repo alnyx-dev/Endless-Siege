@@ -18,6 +18,7 @@ namespace Game.Enemies
         private float _currentHealth;
         private float _attackTimer;
         private GameObject _visualInstance;
+        private Rigidbody _rb;
 
         public void Init(EnemyConfig config, Transform target, IDamageable targetDamageable)
         {
@@ -31,6 +32,20 @@ namespace Game.Enemies
             _attackTimer = 0f;
 
             OnHealthChanged?.Invoke(_currentHealth, _config.maxHealth);
+        }
+
+        private void Awake()
+        {
+            _rb = GetComponent<Rigidbody>();
+            if (_rb == null) _rb = gameObject.AddComponent<Rigidbody>();
+            _rb.useGravity = false;
+            _rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+
+            // solid body collider for obstacle physics; the existing trigger stays for weapon targeting
+            CapsuleCollider body = gameObject.AddComponent<CapsuleCollider>();
+            body.radius = 0.35f;
+            body.height = 1.0f;
+            body.center = new Vector3(0f, 0.5f, 0f);
         }
 
         private void Update()
@@ -61,6 +76,7 @@ namespace Game.Enemies
         {
             _target = null;
             _targetDamageable = null;
+            _rb.linearVelocity = Vector3.zero;
 
             if (_visualInstance != null)
             {
@@ -74,10 +90,14 @@ namespace Game.Enemies
             Vector3 toTarget = _target.position - transform.position;
             toTarget.y = 0f;
 
-            if (toTarget.magnitude <= _config.attackRange) return;
+            if (toTarget.magnitude <= _config.attackRange)
+            {
+                _rb.linearVelocity = Vector3.zero;
+                return;
+            }
 
             Vector3 direction = toTarget.normalized;
-            transform.position += direction * (_config.moveSpeed * Time.deltaTime);
+            _rb.linearVelocity = direction * _config.moveSpeed;
 
             if (direction.sqrMagnitude > 0.0001f)
                 transform.rotation = Quaternion.LookRotation(direction);

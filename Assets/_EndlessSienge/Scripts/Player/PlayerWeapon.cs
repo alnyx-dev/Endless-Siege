@@ -16,14 +16,8 @@ namespace Game.Player
         [Range(0.5f, 15f)] [SerializeField] private float aimToleranceDegrees = 5f;
 
         private float _fireTimer;
-        private ObjectPool<Bullet> _bulletPool;
 
         public IDamageable CurrentTarget { get; private set; }
-
-        private void Awake()
-        {
-            _bulletPool = new ObjectPool<Bullet>(bulletPrefab, transform);
-        }
 
         private void Update()
         {
@@ -56,9 +50,8 @@ namespace Game.Player
         private void Fire(IDamageable target)
         {
             Vector3 spawnPos = muzzlePoint != null ? muzzlePoint.position : transform.position;
-            Bullet bullet = _bulletPool.Get(spawnPos, Quaternion.LookRotation(AimDirection));
+            Bullet bullet = Instantiate(bulletPrefab, spawnPos, Quaternion.LookRotation(AimDirection));
             bullet.Init(((MonoBehaviour)target).transform, target, config.damage, config.bulletSpeed);
-            bullet.transform.SetParent(null);
         }
 
         private IDamageable FindNearestEnemy()
