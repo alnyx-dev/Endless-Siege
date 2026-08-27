@@ -1,5 +1,6 @@
 using UnityEngine;
 using Game.Core;
+using Game.Utils;
 
 namespace Game.Player
 {
@@ -14,6 +15,9 @@ namespace Game.Player
         [SerializeField] private LayerMask enemyLayer;
         [Tooltip("Max angle between barrel and target to allow firing")]
         [Range(0.5f, 15f)] [SerializeField] private float aimToleranceDegrees = 5f;
+
+        [Header("Audio")]
+        [SerializeField] private AudioClip shootSfx;
 
         private float _fireTimer;
         private readonly Collider[] _hitBuffer = new Collider[32];
@@ -60,6 +64,8 @@ namespace Game.Player
             Vector3 spawnPos = muzzlePoint != null ? muzzlePoint.position : transform.position;
             Bullet bullet = _pool.Get(spawnPos, Quaternion.LookRotation(AimDirection));
             bullet.Init(mb.transform, target, config.damage, config.bulletSpeed, _pool);
+
+            SfxPlayer.Play(shootSfx, spawnPos);
         }
 
         private IDamageable FindNearestEnemy()

@@ -8,8 +8,8 @@ namespace Game.UI
     public class SurvivalUI : MonoBehaviour
     {
         [SerializeField] private GameState state;
-        [Tooltip("Optional: wire your own label, otherwise one is created under the scene Canvas")]
         [SerializeField] private TMP_Text timerLabel;
+        [SerializeField] private GameObject gameOverPanel;
         private const string MenuSceneName = "MenuScene";
 
         private void Awake()
@@ -25,10 +25,8 @@ namespace Game.UI
             state.OnTimeUpdated += UpdateTimer;
             state.OnDeath += ShowGameOver;
 
-            if (timerLabel == null)
-                timerLabel = RunUi.CreateText(
-                    RunUi.CanvasRoot(), "Survival Timer", 40,
-                    new Vector2(0.5f, 1f), new Vector2(0f, -120f));
+            if (gameOverPanel != null)
+                gameOverPanel.SetActive(false);
         }
 
         private void OnDestroy()
@@ -45,51 +43,8 @@ namespace Game.UI
 
         private void ShowGameOver()
         {
-            CreateGameOverPanel();
-        }
-
-        private void CreateGameOverPanel()
-        {
-            Transform canvas = RunUi.CanvasRoot();
-
-            RectTransform panel =
-                new GameObject("Game Over Panel", typeof(Image)).GetComponent<RectTransform>();
-            panel.SetParent(canvas, false);
-            panel.anchorMin = Vector2.zero;
-            panel.anchorMax = Vector2.one;
-            panel.offsetMin = Vector2.zero;
-            panel.offsetMax = Vector2.zero;
-            panel.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.65f);
-
-            TMP_Text title = RunUi.CreateText(panel, "Game Over Title", 72,
-                new Vector2(0.5f, 0.5f), new Vector2(0f, 80f));
-            title.text = "Game Over";
-
-            Button menuButton = CreateButton(panel, "Menu Button", "Menu", new Vector2(0f, -60f));
-            menuButton.onClick.AddListener(LoadMenu);
-        }
-
-        private static Button CreateButton(RectTransform parent, string name, string label, Vector2 position)
-        {
-            RectTransform rect =
-                new GameObject(name, typeof(Image), typeof(Button)).GetComponent<RectTransform>();
-            rect.SetParent(parent, false);
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = position;
-            rect.sizeDelta = new Vector2(240f, 70f);
-            rect.GetComponent<Image>().color = new Color(0.25f, 0.25f, 0.25f);
-
-            TMP_Text text = RunUi.CreateText(rect, "Label", 32,
-                new Vector2(0.5f, 0.5f), Vector2.zero);
-            text.rectTransform.sizeDelta = rect.sizeDelta;
-            text.text = label;
-
-            return rect.GetComponent<Button>();
-        }
-
-        private void LoadMenu()
-        {
-            state.RequestMenu();
+            if (gameOverPanel != null)
+                gameOverPanel.SetActive(true);
         }
     }
 

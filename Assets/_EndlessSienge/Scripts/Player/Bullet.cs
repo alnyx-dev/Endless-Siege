@@ -1,5 +1,6 @@
 using UnityEngine;
 using Game.Core;
+using Game.Utils;
 
 namespace Game.Player
 {
@@ -10,6 +11,8 @@ namespace Game.Player
         private ObjectPool<Bullet> _pool;
         private float _damage;
         private float _speed;
+
+        [SerializeField] private AudioClip hitSfx;
 
         public void Init(Transform target, IDamageable targetDamageable, float damage, float speed,
             ObjectPool<Bullet> pool)
@@ -43,6 +46,7 @@ namespace Game.Player
             if (direction.magnitude <= distanceThisFrame)
             {
                 _targetDamageable.TakeDamage(_damage);
+                SfxPlayer.Play(hitSfx, transform.position);
                 Release();
                 return;
             }
